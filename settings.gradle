@@ -31,7 +31,6 @@ include "spring-webflux"
 include "spring-websocket"
 include "framework-bom"
 include "integration-tests"
-include 'learn-ioc'
 
 rootProject.name = "spring"
 rootProject.children.each {project ->
