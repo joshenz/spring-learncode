@@ -36,4 +36,8 @@ rootProject.name = "spring"
 rootProject.children.each {project ->
 	project.buildFileName = "${project.name}.gradle"
 }
+include 'z-springlearn-ioc'
+include 'z-springlearn-aop'
+include 'z-springlearn-transaction'
+include 'z-springlearn-web'
 

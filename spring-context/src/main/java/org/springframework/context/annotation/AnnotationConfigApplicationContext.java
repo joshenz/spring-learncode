@@ -16,8 +16,6 @@
 
 package org.springframework.context.annotation;
 
-import java.util.function.Supplier;
-
 import org.springframework.beans.factory.config.BeanDefinitionCustomizer;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -25,6 +23,8 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+
+import java.util.function.Supplier;
 
 /**
  * Standalone application context, accepting <em>component classes</em> as input &mdash;
@@ -84,8 +84,15 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+		//1.初始化bean的读取器reader和扫描器scan
+		//2.调用父类的无参构造拿到beanFactory DefaultListableBeanFactory
+		//3.注册5个spring自带的基础bean
+		// ConfigurationClassPostProcessor AutowiredAnnotationBeanPostProcessor CommonAnnotationBeanPostProcessor
+		// EventListenerMethodProcessor DefaultEventListenerFactory
 		this();
+		//注册配置类和applicationContext传入的自定义bean
 		register(componentClasses);
+		//启动容器
 		refresh();
 	}
 

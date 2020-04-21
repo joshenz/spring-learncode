@@ -16,26 +16,15 @@
 
 package org.springframework.beans.factory.support;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.beans.factory.BeanCreationNotAllowedException;
-import org.springframework.beans.factory.BeanCurrentlyInCreationException;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.ObjectFactory;
+import org.springframework.beans.factory.*;
 import org.springframework.beans.factory.config.SingletonBeanRegistry;
 import org.springframework.core.SimpleAliasRegistry;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Generic registry for shared bean instances, implementing the
@@ -174,13 +163,22 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 */
 	@Nullable
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
+		//先从缓存map中取出
 		Object singletonObject = this.singletonObjects.get(beanName);
+		//若单例尺中取出对象为空 说明并不存在已经创建完成的单例bean 那么...
+		//isSingletonCurrentlyInCreation 看是否是正在创建的bean 如果是则可能存在循环依赖的情况
+		//这就是spring如何解决循环依赖的开始
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
 			synchronized (this.singletonObjects) {
+				//对当前需要创建的对象加锁
+				//判断提早暴露出来的单例对象池中是否存在
 				singletonObject = this.earlySingletonObjects.get(beanName);
+				//一般出这步出现循环依赖 会将一个半成品对象放入earlySingletonObjects 供其他依赖对象注入
 				if (singletonObject == null && allowEarlyReference) {
+					//拿到单例工厂
 					ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
 					if (singletonFactory != null) {
+						//得到一个单例对象 并加入earlySingletonObjects 提早暴露出去
 						singletonObject = singletonFactory.getObject();
 						this.earlySingletonObjects.put(beanName, singletonObject);
 						this.singletonFactories.remove(beanName);
@@ -203,7 +201,9 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		Assert.notNull(beanName, "Bean name must not be null");
 		synchronized (this.singletonObjects) {
 			Object singletonObject = this.singletonObjects.get(beanName);
+			//如果单例池中不存在
 			if (singletonObject == null) {
+				//bean是否正在被销毁
 				if (this.singletonsCurrentlyInDestruction) {
 					throw new BeanCreationNotAllowedException(beanName,
 							"Singleton bean creation not allowed while singletons of this factory are in destruction " +
@@ -212,6 +212,8 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				if (logger.isDebugEnabled()) {
 					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
 				}
+				//判断是否正在被检查inCreationCheckExclusions 如果为否则
+				//this.singletonsCurrentlyInCreation.add(beanName) 将当前bean加入到正在创建的缓存中
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
 				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
@@ -219,6 +221,8 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					this.suppressedExceptions = new LinkedHashSet<>();
 				}
 				try {
+					//调用传进来的singletonFactory去执行创建bean的过程 也就是createBean方法
+					//AbstractAutowireCapableBeanFactory.createBean()
 					singletonObject = singletonFactory.getObject();
 					newSingleton = true;
 				}
@@ -242,9 +246,12 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					if (recordSuppressedExceptions) {
 						this.suppressedExceptions = null;
 					}
+					//创建成功之后 将单例对象从singletonsCurrentlyInCreation 正在被创建的缓存中移除
 					afterSingletonCreation(beanName);
 				}
 				if (newSingleton) {
+					//单例对象创建成功 则将对象加入singletonObjects(单例池) registeredSingletons(已被注册的bean)缓存中
+					//并且从singletonFactories(单例工厂)  earlySingletonObjects(提早暴露的bean)缓存中移除
 					addSingleton(beanName, singletonObject);
 				}
 			}
